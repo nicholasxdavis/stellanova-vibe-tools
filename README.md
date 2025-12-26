@@ -1,8 +1,10 @@
-![Stellanova Vibetools Dashboard](https://nicholasxdavis.github.io/BN-db1/img/vibetools.png)
-
 # Stellanova Vibe Tools 
 
 Made for Vibe Coders.
+
+<p align="center">
+<img src="https://nicholasxdavis.github.io/BN-db1/img/vibetools.png" alt="Stellanova Vibetools Dashboard">
+</p>
 
 ## Overview
 

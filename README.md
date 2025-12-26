@@ -1,6 +1,6 @@
 # Stellanova Vibe Tools 
 
-Your browser's ultimate design and development sidekick. Scrape assets, analyze stacks, and manage AI prompts effortlessly.
+Made for Vibe Coders.
 
 ## Overview
 

@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "Stellanova Devtools",
+  "version": "1.5",
+  "description": "A collection of vibe-based coding tools to assist with development.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "pageCapture",
+    "downloads",
+    "scripting",
+    "storage",
+    "browsingData"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' https://www.blacnova.net https://cdnjs.cloudflare.com https: data:;"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "BN Vibe Tools",
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "analyzer_content.js",
+        "scraper_content.js",
+        "design_doc_generator.js",
+        "asset_scraper_content.js",
+        "whatfont_content.js",
+        "colorpick_content.js",
+        "screenruler_content.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
+

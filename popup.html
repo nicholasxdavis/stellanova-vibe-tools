@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BN Vibe Tools</title>
+    <!-- 1. Load Fonts (Inter and Poppins from your repo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 2. Load Font Awesome (CDN with local fallback) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="this.onerror=null; this.href='font-awesome.min.css';" />
+    <!-- Fallback to local if CDN fails -->
+    <noscript><link rel="stylesheet" href="font-awesome.min.css" /></noscript>
+
+    <!-- 3. Load Tailwind CSS (Local file) -->
+    <script src="tailwind.js"></script>
+    <script src="tailwind-config.js"></script>
+    <style>
+        /* Force dark mode - override any light mode */
+        html, body {
+            background-color: #000000 !important;
+            color: #f3f4f6 !important;
+        }
+        
+        /* Set a dynamic size for the popup */
+        body {
+            width: 420px;
+            font-family: 'Inter', sans-serif;
+            /* Let height be dynamic but within limits */
+            min-height: 550px; 
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            background-color: #000000;
+            color: #f3f4f6;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+        }
+        /* Custom scrollbar to match BN vibe */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000; /* Pure black */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4611c; /* BN Orange */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #e67a35; /* BN Orange Hover */
+        }
+        /* Style for the results area */
+        #results-container {
+            flex: 0 0 auto; /* Don't grow, shrink naturally based on content */
+            overflow: visible !important; /* Remove scrolling from results container */
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* Hide class for JS toggling */
+        .hidden {
+            display: none;
+        }
+        
+        /* Smooth 60fps animations for collapsible sections */
+        #tools-list, #prompts-list, #knowledge-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0s, margin-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0s;
+            margin-top: 0;
+            will-change: max-height, margin-top;
+            display: block !important;
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+        
+        #tools-list.expanded, #prompts-list.expanded, #knowledge-list.expanded {
+            margin-top: 8px;
+            transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0s, margin-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0s;
+        }
+        
+        #tools-chevron, #prompts-chevron, #knowledge-chevron {
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            will-change: transform;
+            transform-origin: center;
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+        
+        /* Bookmarks Bar Styles */
+        #bookmarks-bar {
+            background-color: #000000 !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            overflow-y: visible; /* Allow dropdown to show */
+            min-height: 32px;
+            max-height: 32px;
+        }
+        
+        #bookmarks-bar * {
+            background-color: transparent !important;
+        }
+        
+        #bookmarks-bar .bookmark-add-dropdown {
+            background-color: #000000 !important;
+        }
+        
+        #bookmarks-bar .bookmark-add-dropdown * {
+            background-color: transparent !important;
+        }
+        
+        #bookmarks-bar::-webkit-scrollbar {
+            height: 2px;
+        }
+        
+        #bookmarks-bar::-webkit-scrollbar-thumb {
+            background: rgba(212, 97, 28, 0.3);
+            border-radius: 1px;
+        }
+        
+        #bookmarks-bar::-webkit-scrollbar-thumb:hover {
+            background: rgba(212, 97, 28, 0.5);
+        }
+        
+        .bookmark-item {
+            border: none;
+            color: #d4611c;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+            user-select: none;
+            flex-shrink: 0;
+            line-height: 1.2;
+            height: 22px;
+            position: relative;
+        }
+        
+        /* Prompt and Knowledge bookmarks - fully draggable with drag cursor */
+        .bookmark-item[data-bookmark-type="prompt"],
+        .bookmark-item[data-bookmark-type="knowledge"] {
+            cursor: grab;
+        }
+        
+        .bookmark-item[data-bookmark-type="prompt"]:active,
+        .bookmark-item[data-bookmark-type="knowledge"]:active,
+        .bookmark-item[data-bookmark-type="prompt"].dragging,
+        .bookmark-item[data-bookmark-type="knowledge"].dragging {
+            cursor: grabbing;
+        }
+        
+        /* Tool bookmarks - only icon is draggable for reordering */
+        .bookmark-item .bookmark-drag-handle {
+            cursor: grab;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 2px;
+        }
+        
+        .bookmark-item .bookmark-drag-handle:active {
+            cursor: grabbing;
+        }
+        
+        /* Remove drag cursor from icon for prompt/knowledge (whole item is draggable) */
+        .bookmark-item[data-bookmark-type="prompt"] .bookmark-drag-handle,
+        .bookmark-item[data-bookmark-type="knowledge"] .bookmark-drag-handle {
+            cursor: inherit;
+        }
+        
+        .bookmark-item:hover {
+            color: #e67a35;
+            background-color: rgba(212, 97, 28, 0.08);
+        }
+        
+        .bookmark-item.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
+        }
+        
+        .bookmark-item.drag-over {
+            border-top: 2px solid #d4611c;
+        }
+        
+        .bookmark-remove-btn {
+            opacity: 0.6;
+            transition: opacity 0.15s;
+            padding: 0;
+            margin: 0;
+            line-height: 1;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        
+        .bookmark-item:hover .bookmark-remove-btn {
+            opacity: 1;
+        }
+        
+        .bookmark-add-btn {
+            border: none;
+            color: #d4611c;
+            padding: 0;
+            border-radius: 12px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+        }
+        
+        .bookmark-add-btn:hover {
+            color: #e67a35;
+            background-color: rgba(212, 97, 28, 0.08);
+        }
+        
+        /* Bookmark add dropdown */
+        .bookmark-add-dropdown {
+            position: absolute !important;
+            top: 100% !important;
+            margin-top: 2px !important;
+            background-color: #000000 !important;
+            background: #000000 !important;
+            border: 1px solid rgba(212, 97, 28, 0.3) !important;
+            border-left: none !important;
+            border-radius: 0 6px 6px 0 !important;
+            padding: 4px !important;
+            width: 140px !important;
+            min-width: 140px !important;
+            max-width: 140px !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 97, 28, 0.1) !important;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+            z-index: 99999 !important;
+            pointer-events: none;
+            display: block !important;
+            overflow: visible !important;
+        }
+        
+        
+        /* Dropdown visibility is now controlled by JavaScript */
+        .bookmark-add-dropdown.visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0);
+            pointer-events: auto !important;
+            display: block !important;
+        }
+        
+        .bookmark-add-dropdown-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 6px 8px !important;
+            border-radius: 4px !important;
+            color: #ffffff !important;
+            background-color: transparent !important;
+            font-size: 11px !important;
+            cursor: pointer !important;
+            transition: background-color 0.15s ease !important;
+            white-space: nowrap !important;
+        }
+        
+        .bookmark-add-dropdown-item:hover {
+            background-color: rgba(212, 97, 28, 0.2) !important;
+            color: #d4611c !important;
+        }
+        
+        .bookmark-add-dropdown-item:hover i {
+            color: #d4611c !important;
+        }
+        
+        .bookmark-add-dropdown-item:hover span {
+            color: #d4611c !important;
+        }
+        
+        .bookmark-add-dropdown-item i {
+            font-size: 10px !important;
+            width: 12px !important;
+            text-align: center !important;
+            color: #ffffff !important;
+        }
+        
+        .bookmark-add-dropdown-item span {
+            color: #ffffff !important;
+        }
+        
+        /* Side Menu Styles */
+        .bookmark-side-menu {
+            position: absolute;
+            width: 140px;
+            min-width: 140px;
+            max-width: 140px;
+            max-height: 500px;
+            background-color: #000000 !important;
+            background: #000000 !important;
+            border: 1px solid rgba(212, 97, 28, 0.3);
+            border-right: none;
+            border-radius: 6px 0 0 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 97, 28, 0.1);
+            z-index: 100000 !important;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-10px);
+            transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+        }
+        
+        .bookmark-side-menu > * {
+            background-color: transparent !important;
+        }
+        
+        .bookmark-side-menu {
+            background-color: #000000 !important;
+            background: #000000 !important;
+        }
+        
+        .bookmark-side-menu.visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateX(0);
+            display: flex !important;
+        }
+        
+        .bookmark-side-menu-header {
+            display: none !important;
+        }
+        
+        .bookmark-side-menu-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px !important;
+            background-color: #000000 !important;
+            background: #000000 !important;
+        }
+        
+        .bookmark-side-menu-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .bookmark-side-menu-content::-webkit-scrollbar-track {
+            background: #000;
+        }
+        
+        .bookmark-side-menu-content::-webkit-scrollbar-thumb {
+            background: #d4611c;
+            border-radius: 10px;
+        }
+        
+        .bookmark-side-menu-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 6px 8px !important;
+            border-radius: 4px !important;
+            color: #ffffff !important;
+            background-color: transparent !important;
+            font-size: 11px !important;
+            cursor: pointer !important;
+            transition: background-color 0.15s ease !important;
+            white-space: nowrap !important;
+            margin-bottom: 0 !important;
+            border: none !important;
+            user-select: none !important;
+        }
+        
+        .bookmark-side-menu-item .drag-handle {
+            cursor: grab !important;
+            user-select: none !important;
+            flex-shrink: 0 !important;
+        }
+        
+        .bookmark-side-menu-item .drag-handle:active,
+        .bookmark-side-menu-item .drag-handle[draggable="true"]:active {
+            cursor: grabbing !important;
+        }
+        
+        .bookmark-side-menu-item span {
+            cursor: pointer !important;
+            user-select: none !important;
+        }
+        
+        .bookmark-side-menu-item.dragging {
+            opacity: 0.5 !important;
+        }
+        
+        /* Prevent text selection during drag */
+        .bookmark-side-menu-item.dragging * {
+            user-select: none !important;
+            pointer-events: none !important;
+        }
+        
+        .bookmark-side-menu-item:hover {
+            background-color: rgba(212, 97, 28, 0.2) !important;
+            color: #d4611c !important;
+        }
+        
+        .bookmark-side-menu-item:hover i {
+            color: #d4611c !important;
+        }
+        
+        .bookmark-side-menu-item:hover span {
+            color: #d4611c !important;
+        }
+        
+        .bookmark-side-menu-item.draggable {
+            cursor: grab;
+        }
+        
+        .bookmark-side-menu-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .bookmark-side-menu-item i {
+            font-size: 10px !important;
+            width: 12px !important;
+            text-align: center !important;
+            color: #ffffff !important;
+        }
+        
+        .bookmark-side-menu-item span,
+        .bookmark-side-menu-item-title {
+            color: #ffffff !important;
+            font-size: 11px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        
+        .bookmark-side-menu-item-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .bookmark-side-menu-item-desc {
+            display: none !important;
+        }
+        
+        .bookmark-side-menu-item-actions {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+        }
+        
+        .bookmark-side-menu-action-btn {
+            background: transparent;
+            border: none;
+            color: #d4611c;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+            font-size: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .bookmark-side-menu-action-btn:hover {
+            color: #e67a35;
+            background-color: rgba(212, 97, 28, 0.1);
+        }
+        
+        .bookmark-side-menu-action-btn.run {
+            background-color: #d4611c;
+            color: #ffffff;
+        }
+        
+        .bookmark-side-menu-action-btn.run:hover {
+            background-color: #e67a35;
+        }
+        
+        .bookmark-menu-btn {
+            border: none;
+            color: #d4611c;
+            padding: 0;
+            border-radius: 12px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+        }
+        
+        .bookmark-menu-btn:hover {
+            color: #e67a35;
+            background-color: rgba(212, 97, 28, 0.08);
+        }
+        
+        
+        .draggable-item {
+            cursor: move;
+        }
+        
+        .draggable-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .drop-zone {
+            border: 2px dashed transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .drop-zone.drag-over {
+            border-color: #d4611c;
+            background-color: rgba(212, 97, 28, 0.05);
+        }
+        
+        /* Improve readability and spacing */
+        p, span, div {
+            line-height: 1.6;
+        }
+        
+        /* Better button sizing */
+        button {
+            font-size: 14px;
+            padding: 8px 16px;
+            min-height: 36px;
+        }
+        
+        /* Icon sizing improvements */
+        i[class*="fa-"] {
+            font-size: 1.1em;
+            vertical-align: middle;
+        }
+        
+        /* Better text contrast */
+        .text-gray-400 {
+            color: #9ca3af !important;
+        }
+        
+        .text-gray-300 {
+            color: #d1d5db !important;
+        }
+        
+        /* Improve card spacing */
+        .bg-bn-dark {
+            padding: 16px !important;
+        }
+        
+        /* Better list spacing */
+        ul, ol {
+            padding-left: 1.25rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Ensure custom BN colors work */
+        .bg-bn-black {
+            background-color: #000000 !important;
+        }
+        .bg-bn-dark {
+            background-color: #1A1A1A !important;
+        }
+        
+        /* White background for body */
+        body {
+            background-color: #ffffff !important;
+        }
+        
+        /* Tools section white - full width */
+        #tools-header, #tools-list {
+            background-color: #ffffff !important;
+        }
+        
+        /* Prompts section white - full width */
+        #prompts-header, #prompts-list {
+            background-color: #ffffff !important;
+        }
+        
+        /* Tools section container white */
+        body > div:nth-child(2) {
+            background-color: #ffffff !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        
+        /* Results area (tabs + content) black */
+        body > div:nth-child(3) {
+            background-color: #000000 !important;
+        }
+        
+        #results-container {
+            background-color: #000000 !important;
+            padding-bottom: 24px !important;
+        }
+        
+        /* Keep ONLY header black */
+        body > div:first-child {
+            background-color: #000000 !important;
+        }
+        
+        /* Ensure Tools section is full width */
+        .w-full {
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        
+        /* Tab buttons cursor */
+        .tab-btn {
+            cursor: pointer !important;
+        }
+        
+        .tab-btn:hover {
+            cursor: pointer !important;
+        }
+        .text-bn-orange {
+            color: #d4611c !important;
+        }
+        .bg-bn-orange {
+            background-color: #d4611c !important;
+        }
+        .hover\:bg-bn-orange-hover:hover {
+            background-color: #e67a35 !important;
+        }
+        .border-bn-orange {
+            border-color: #d4611c !important;
+        }
+        .hover\:text-bn-orange:hover {
+            color: #d4611c !important;
+        }
+        
+        /* Copied notification style */
+        #copied-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(212, 97, 28, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            pointer-events: none; /* Ignore mouse events */
+        }
+        
+        #copied-notification.show {
+            opacity: 1;
+            transform: translate(-50%, -60%);
+        }
+        
+        /* Wet paint / Oil paint effect for active toggle buttons */
+        .tool-toggle-active {
+            background: rgba(220, 38, 38, 0.35) !important;
+            backdrop-filter: blur(1px) saturate(180%);
+            -webkit-backdrop-filter: blur(1px) saturate(180%);
+            border: 1px solid rgba(220, 38, 38, 0.2) !important;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+        }
+        
+        .tool-toggle-active:hover {
+            background: rgba(220, 38, 38, 0.45) !important;
+            box-shadow: 0 6px 16px rgba(220, 38, 38, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+        }
+        
+        .tool-toggle-active:focus {
+            outline: none !important;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        /* Support Us heart hover */
+        .support-us-link:hover .support-us-heart {
+            color: #d4611c !important;
+        }
+        
+        /* Bookmark bar toggle switch */
+        #bookmark-bar-toggle {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        #bookmark-bar-toggle + div {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background-color: #4b5563;
+            border-radius: 9999px;
+            transition: background-color 0.2s ease;
+            cursor: pointer;
+        }
+        
+        #bookmark-bar-toggle + div::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+        
+        #bookmark-bar-toggle:checked + div {
+            background-color: #d4611c;
+        }
+        
+        #bookmark-bar-toggle:checked + div::after {
+            transform: translateX(20px);
+        }
+    </style>
+</head>
+<body class="bg-bn-black text-gray-100 dark font-sans flex flex-col">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-4 border-b border-white/10 flex-shrink-0 px-4 pt-4">
+        <div class="flex items-center space-x-3">
+            <a href="https://www.blacnova.net" target="_blank" rel="noopener noreferrer" title="Visit Blacnova.net">
+                <img src="symbol.png" alt="BN Logo" class="h-9 w-9 rounded-lg" onerror="this.src='icon128.png'">
+            </a>
+            <span class="text-xs font-medium" style="margin-top: 1px; color: #ffffff !important;">Vibe Tools</span>
+        </div>
+        
+        <!-- Right side container -->
+        <div class="flex items-center space-x-4">
+            <a href="https://buymeacoffee.com/galore" target="_blank" rel="noopener noreferrer" class="text-xs hover:text-bn-orange transition-colors font-medium support-us-link" style="margin-top: -3px; color: #ffffff !important;" title="Support us">
+                Support Us <i class="fas fa-heart ml-1 support-us-heart" style="margin-top: -1px; display: inline-block; transition: color 0.15s ease;"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Bookmarks Bar -->
+    <div id="bookmarks-bar" class="flex items-center" style="position: relative; overflow: visible !important;">
+        <div id="bookmarks-container" class="flex items-center gap-2 flex-1 min-w-0"></div>
+        
+        <!-- Add Bookmark Button -->
+        <button id="bookmark-add-btn" class="bookmark-add-btn" title="Add Bookmark" style="position: relative; z-index: 100000; overflow: visible !important;">
+            <i class="fas fa-plus"></i>
+            <div class="bookmark-add-dropdown" style="position: absolute; z-index: 99999 !important;">
+                <div class="bookmark-add-dropdown-item" data-action="tools" data-hover-menu="tools">
+                    <i class="fas fa-tools"></i>
+                    <span>Tools</span>
+                </div>
+                <div class="bookmark-add-dropdown-item" data-action="prompts" data-hover-menu="prompts">
+                    <i class="fas fa-comment-dots"></i>
+                    <span>Prompts</span>
+                </div>
+                <div class="bookmark-add-dropdown-item" data-action="knowledge" data-hover-menu="knowledge">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>Knowledge</span>
+                </div>
+            </div>
+        </button>
+        
+        <!-- Side Menus (appear on left on hover) -->
+        <div id="bookmark-side-menu-tools" class="bookmark-side-menu" style="display: none;">
+            <div class="bookmark-side-menu-header">
+                <h3 class="bookmark-side-menu-title">Tools</h3>
+                <button class="bookmark-side-menu-close" data-menu="tools">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bookmark-side-menu-content" id="tools-side-menu-list">
+                <!-- Tools will be populated here -->
+            </div>
+        </div>
+        
+        <div id="bookmark-side-menu-prompts" class="bookmark-side-menu" style="display: none;">
+            <div class="bookmark-side-menu-header">
+                <h3 class="bookmark-side-menu-title">Saved Prompts</h3>
+                <button class="bookmark-side-menu-close" data-menu="prompts">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bookmark-side-menu-content" id="prompts-side-menu-list">
+                <!-- Saved prompts will be populated here -->
+            </div>
+        </div>
+        
+        <div id="bookmark-side-menu-knowledge" class="bookmark-side-menu" style="display: none;">
+            <div class="bookmark-side-menu-header">
+                <h3 class="bookmark-side-menu-title">Saved Bubbles</h3>
+                <button class="bookmark-side-menu-close" data-menu="knowledge">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bookmark-side-menu-content" id="knowledge-side-menu-list">
+                <!-- Saved knowledge bubbles will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tool Section -->
+    <div class="w-full flex-shrink-0" style="background-color: #ffffff !important; padding: 16px 0; margin: 0; width: 100%; box-sizing: border-box;">
+        <div class="px-4 flex items-center justify-between cursor-pointer" id="tools-header" style="background-color: #ffffff !important;">
+            <h2 class="text-sm font-medium text-gray-600 uppercase tracking-wider font-heading flex items-center gap-2">
+                <i class="fas fa-tools text-bn-orange text-xs"></i>
+                <span data-translate="tools">Tools</span>
+            </h2>
+            <i class="fas fa-chevron-right text-gray-600 text-xs transition-transform" id="tools-chevron"></i>
+        </div>
+        
+        <div class="mt-2 px-4 space-y-1.5" id="tools-list" style="background-color: #ffffff !important;">
+            
+            <!-- Tool 1: Skin Scraper -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-layer-group text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">Skin Scraper</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Save this page as a Markdown (.md) file <br>in the format: UI Design Doc (Minified)</p>
+                        </div>
+                    </div>
+                    <button id="scrape-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[70px]">
+                        Scrape
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 2: Asset Scraper -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-download text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">Asset Scraper</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Extract all page assets. (View in Scraper tab)</p>
+                        </div>
+                    </div>
+                    <button id="asset-scraper-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[70px]">
+                        Scrape
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 3: CSS Analyzer -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-palette text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">CSS Analyzer</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Scan page for colors & fonts. (Run in Analyzer tab)</p>
+                        </div>
+                    </div>
+                    <button id="css-analyzer-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[60px]">
+                        Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 4: SEO Analyzer -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-search-dollar text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">SEO Analyzer</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Check meta tags & data. (Run in Analyzer tab)</p>
+                        </div>
+                    </div>
+                    <button id="seo-analyzer-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[60px]">
+                        Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 5: Stack Analyzer -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-cubes-stacked text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">Stack Analyzer</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Detect site frameworks. (Run in Analyzer tab)</p>
+                        </div>
+                    </div>
+                    <button id="stack-analyzer-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[60px]">
+                        Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 6: Clear Cache -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-trash-alt text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">Clear Cache</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Clear cache for current website only. (Dev testing tool)</p>
+                        </div>
+                    </div>
+                    <button id="clear-cache-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[60px]">
+                        Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 7: FontGrab -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-font text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">FontGrab</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Hover over text to see font details. Click to save.</p>
+                        </div>
+                    </div>
+                    <button id="fontgrab-toggle-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[70px]">
+                        <span class="fontgrab-status">Enable</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 8: ColorPick -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-eye-dropper text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">ColorPick</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Hover over elements to see color details. Click to save.</p>
+                        </div>
+                    </div>
+                    <button id="colorpick-toggle-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[70px]">
+                        <span class="colorpick-status">Enable</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool 9: Screen Ruler -->
+            <div class="bg-bn-dark p-2.5 rounded-xl border border-white/10 transition-all hover:border-white/20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-ruler text-bn-orange text-base" style="font-size: 1rem;"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-sm font-heading text-white leading-tight">Screen Ruler</p>
+                            <p class="text-xs text-gray-400 leading-tight mt-0.5">Measure distances and alignments. Click and drag to measure.</p>
+                        </div>
+                    </div>
+                    <button id="screenruler-toggle-btn" class="flex-shrink-0 bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-1.5 px-3 rounded-2xl transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-bn-orange focus:ring-opacity-75 disabled:opacity-50 text-xs min-w-[70px]">
+                        <span class="screenruler-status">Enable</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Prompts Section -->
+    <div class="w-full flex-shrink-0 mt-2" style="background-color: #ffffff !important; padding: 16px 0; margin: 0; width: 100%; box-sizing: border-box;">
+        <div class="px-4 flex items-center justify-between cursor-pointer" id="prompts-header" style="background-color: #ffffff !important;">
+            <h2 class="text-sm font-medium text-gray-600 uppercase tracking-wider font-heading flex items-center gap-2">
+                <i class="fas fa-comment-dots text-bn-orange text-xs"></i>
+                <span data-translate="prompts">Prompts</span>
+            </h2>
+            <i class="fas fa-chevron-right text-gray-600 text-xs transition-transform" id="prompts-chevron"></i>
+        </div>
+        
+        <div class="mt-2 px-4 space-y-2" id="prompts-list" style="background-color: #ffffff !important;">
+            <!-- Add New Prompt -->
+            <div class="bg-bn-dark p-3 rounded-xl border border-white/10">
+                <div class="mb-2">
+                    <label class="text-xs text-gray-400 mb-1 block">Add Custom Prompt</label>
+                    <textarea id="new-prompt-text" class="w-full bg-black text-white text-sm rounded-xl p-3 border border-white/10 focus:border-bn-orange focus:outline-none resize-none" rows="3" placeholder="Enter your prompt here..."></textarea>
+                </div>
+                <button id="save-prompt-btn" class="w-full bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-2.5 px-4 rounded-xl transition-all duration-200 text-xs hover:shadow-lg hover:shadow-bn-orange/20 hover:-translate-y-0.5">
+                    <i class="fas fa-save mr-1.5"></i> Save Prompt
+                </button>
+            </div>
+            
+            <!-- Template Prompts -->
+            <div id="template-prompts" class="space-y-2">
+                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider font-heading mt-2">Template Prompts</h3>
+            </div>
+            
+            <!-- Saved Custom Prompts -->
+            <div id="saved-prompts" class="space-y-2">
+                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider font-heading mt-2">Your Prompts</h3>
+                <div id="saved-prompts-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Section -->
+    <div class="w-full flex-shrink-0 mt-2" style="background-color: #ffffff !important; padding: 16px 0; margin: 0; width: 100%; box-sizing: border-box;">
+        <div class="px-4 flex items-center justify-between cursor-pointer" id="knowledge-header" style="background-color: #ffffff !important;">
+            <h2 class="text-sm font-medium text-gray-600 uppercase tracking-wider font-heading flex items-center gap-2">
+                <i class="fas fa-lightbulb text-bn-orange text-xs"></i>
+                <span data-translate="knowledge">Knowledge</span>
+            </h2>
+            <i class="fas fa-chevron-right text-gray-600 text-xs transition-transform" id="knowledge-chevron"></i>
+        </div>
+        
+        <div class="mt-2 px-4 space-y-2" id="knowledge-list" style="background-color: #ffffff !important;">
+            <!-- Add New Knowledge Bubble -->
+            <div class="bg-bn-dark p-3.5 rounded-xl border border-white/10" style="border: 1px dashed rgba(212, 97, 28, 0.5);">
+                <div class="space-y-2.5" id="knowledge-fields-container">
+                    <!-- Field templates will be added here dynamically -->
+                </div>
+                <button id="save-knowledge-btn" class="w-full bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-2.5 px-4 rounded-xl transition-all duration-200 text-xs mt-3.5 hover:shadow-lg hover:shadow-bn-orange/20 hover:-translate-y-0.5">
+                    <i class="fas fa-save mr-1.5"></i> Save Knowledge Bubble
+                </button>
+            </div>
+            
+            <!-- Saved Knowledge Bubbles -->
+            <div id="saved-knowledge" class="space-y-2">
+                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider font-heading mt-2">Your Knowledge Bubbles</h3>
+                <div id="saved-knowledge-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Area -->
+    <div class="mt-4 flex flex-col px-4" style="background-color: #000000 !important;">
+        <div class="flex border-b border-white/10" id="tabs" style="background-color: #000000 !important;">
+            <button class="tab-btn active font-heading py-2.5 px-4 text-sm text-white border-b-2 border-bn-orange font-medium cursor-pointer" data-tab="scraper">Scraper</button>
+            <button class="tab-btn font-heading py-2.5 px-4 text-sm text-white border-b-2 border-transparent hover:text-white font-medium cursor-pointer" data-tab="analyzer">Analyzer</button>
+            <button class="tab-btn font-heading py-2.5 px-4 text-sm text-white border-b-2 border-transparent hover:text-white font-medium cursor-pointer" data-tab="saved">Saved</button>
+            <button class="tab-btn font-heading py-2.5 px-4 text-sm text-white border-b-2 border-transparent hover:text-white font-medium cursor-pointer" data-tab="logs">Logs</button>
+            <button class="tab-btn font-heading py-2.5 px-4 text-sm text-white border-b-2 border-transparent hover:text-white font-medium cursor-pointer" data-tab="settings">Settings</button>
+        </div>
+        
+        <div id="results-container" class="mt-3 bg-black rounded-xl border border-white/10 p-3" style="background-color: #000000 !important; padding-bottom: 24px !important;">
+            
+            <!-- Scraper Tab Content -->
+            <div id="tab-scraper" class="tab-content active" style="background-color: #000000 !important;">
+                <p id="scraper-status" class="text-gray-400 text-sm mb-4">Click 'Scrape' in the tools list to save the current page as MHTML.</p>
+                
+                <!-- Asset Scraper Results -->
+                <div id="asset-scraper-results" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-heading text-gray-300 text-base font-medium">Scraped Assets</h3>
+                        <span id="asset-count" class="text-xs text-gray-400"></span>
+                    </div>
+                    
+                    <!-- Asset Categories -->
+                    <div id="asset-categories" class="space-y-4">
+                        <!-- Images -->
+                        <div id="assets-images" class="hidden">
+                            <h4 class="font-heading text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-image mr-2 text-bn-orange"></i> Images (<span id="images-count">0</span>)
+                            </h4>
+                            <div id="images-grid" class="grid grid-cols-2 gap-2"></div>
+                        </div>
+                        
+                        <!-- Stylesheets -->
+                        <div id="assets-stylesheets" class="hidden">
+                            <h4 class="font-heading text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-file-code mr-2 text-bn-orange"></i> Stylesheets (<span id="stylesheets-count">0</span>)
+                            </h4>
+                            <div id="stylesheets-list" class="space-y-2"></div>
+                        </div>
+                        
+                        <!-- Scripts -->
+                        <div id="assets-scripts" class="hidden">
+                            <h4 class="font-heading text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-code mr-2 text-bn-orange"></i> Scripts (<span id="scripts-count">0</span>)
+                            </h4>
+                            <div id="scripts-list" class="space-y-2"></div>
+                        </div>
+                        
+                        <!-- Fonts -->
+                        <div id="assets-fonts" class="hidden">
+                            <h4 class="font-heading text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-font mr-2 text-bn-orange"></i> Fonts (<span id="fonts-count">0</span>)
+                            </h4>
+                            <div id="fonts-list" class="space-y-2"></div>
+                        </div>
+                        
+                        <!-- Other -->
+                        <div id="assets-other" class="hidden">
+                            <h4 class="font-heading text-gray-400 text-sm mb-2 flex items-center">
+                                <i class="fas fa-file mr-2 text-bn-orange"></i> Other Assets (<span id="other-count">0</span>)
+                            </h4>
+                            <div id="other-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analyzer Tab Content -->
+            <div id="tab-analyzer" class="tab-content space-y-4" style="background-color: #000000 !important;">
+                <div id="analyzer-status" class="text-gray-400 text-sm text-center hidden">Analyzing...</div>
+
+                <!-- CSS Results -->
+                <div id="css-results" class="hidden">
+                    <h3 class="font-heading text-gray-300 mb-2 border-b border-white/10 pb-1">CSS</h3>
+                    <div id="colors-results" class="hidden">
+                        <h4 class="font-heading text-gray-400 text-sm mb-2">Colors</h4>
+                        <div id="colors-list" class="space-y-2"></div>
+                    </div>
+                    <div id="fonts-results" class="hidden mt-3">
+                        <h4 class="font-heading text-gray-400 text-sm mb-2">Fonts</h4>
+                        <div id="fonts-list" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- SEO Results -->
+                <div id="seo-results" class="hidden">
+                    <h3 class="font-heading text-gray-300 mb-2 border-b border-white/10 pb-1">SEO</h3>
+                    <div id="seo-list" class="space-y-2"></div>
+                </div>
+
+                <!-- Stack Results -->
+                <div id="stack-results" class="hidden">
+                    <h3 class="font-heading text-gray-300 mb-2 border-b border-white/10 pb-1">Stack</h3>
+                    <div id="stack-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Saved Tab Content -->
+            <div id="tab-saved" class="tab-content space-y-4" style="background-color: #000000 !important;">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading text-gray-300 text-lg font-medium">Saved Items</h3>
+                    <button id="clear-saved-btn" class="text-xs text-gray-400 hover:text-red-600 transition-colors font-medium">
+                        <i class="fas fa-trash mr-1"></i> Clear All
+                    </button>
+                </div>
+                
+                <!-- Saved Fonts -->
+                <div id="saved-fonts-section" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-heading text-gray-300 text-sm font-medium flex items-center">
+                            <i class="fas fa-font mr-2 text-bn-orange"></i> Saved Fonts
+                        </h4>
+                        <span id="saved-fonts-count" class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">0</span>
+                    </div>
+                    <div id="saved-fonts-list" class="space-y-3"></div>
+                </div>
+                
+                <!-- Saved Colors -->
+                <div id="saved-colors-section" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-heading text-gray-300 text-sm font-medium flex items-center">
+                            <i class="fas fa-palette mr-2 text-bn-orange"></i> Saved Colors
+                        </h4>
+                        <span id="saved-colors-count" class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">0</span>
+                    </div>
+                    <div id="saved-colors-list" class="grid grid-cols-1 gap-3"></div>
+                </div>
+                
+                <!-- Saved Assets -->
+                <div id="saved-assets-section" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-heading text-gray-300 text-sm font-medium flex items-center">
+                            <i class="fas fa-download mr-2 text-bn-orange"></i> Saved Assets
+                        </h4>
+                        <span id="saved-assets-count" class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">0</span>
+                    </div>
+                    <div id="saved-assets-list" class="space-y-2"></div>
+                </div>
+                
+                <div id="saved-empty" class="text-center text-gray-400 py-12">
+                    <i class="fas fa-inbox text-4xl mb-3 opacity-30"></i>
+                    <p class="text-sm font-medium text-gray-400">No saved items yet</p>
+                    <p class="text-xs text-gray-400 mt-1">Use FontGrab, ColorPick, or Asset Scraper to save items.</p>
+                </div>
+            </div>
+
+            <!-- Logs Tab Content -->
+            <div id="tab-logs" class="tab-content" style="background-color: #000000 !important;">
+                <ul id="logs-list" class="space-y-1 text-xs font-mono">
+                    <!-- Logs will be injected here -->
+                </ul>
+            </div>
+            
+            <!-- Settings Tab Content -->
+            <div id="tab-settings" class="tab-content space-y-4" style="background-color: #000000 !important;">
+                <h3 class="font-heading text-gray-300 text-base font-medium mb-3" data-translate="settings">Settings</h3>
+                
+                <!-- General Settings -->
+                <div class="bg-bn-dark p-3 rounded-xl border border-white/10">
+                    <h4 class="text-sm font-medium text-white font-heading mb-3" data-translate="general_settings">General Settings</h4>
+                    
+                    <div class="space-y-3">
+                        <!-- Bookmark Bar Toggle -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <label class="text-xs text-white font-medium block mb-1" data-translate="show_bookmark_bar">Show Bookmark Bar</label>
+                                <p class="text-xs text-gray-400" data-translate="bookmark_bar_desc">Toggle visibility of the bookmark bar at the top</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer ml-4">
+                                <input type="checkbox" id="bookmark-bar-toggle" checked>
+                                <div></div>
+                            </label>
+                        </div>
+                        
+                        <!-- Language Selector -->
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block" data-translate="language">Language</label>
+                            <select id="language-selector" class="w-full bg-black text-white text-sm rounded-xl p-2 border border-white/10 focus:border-bn-orange focus:outline-none">
+                                <option value="en" data-translate="lang_en">English</option>
+                                <option value="es" data-translate="lang_es">Español</option>
+                                <option value="zh" data-translate="lang_zh">中文</option>
+                                <option value="hi" data-translate="lang_hi">हिन्दी</option>
+                                <option value="fr" data-translate="lang_fr">Français</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1" data-translate="language_desc">Change the interface language</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- GitHub API Settings -->
+                <div class="bg-bn-dark p-3 rounded-xl border border-white/10">
+                    <h4 class="text-sm font-medium text-white font-heading mb-3" data-translate="github_api">GitHub API Configuration</h4>
+                    <p class="text-xs text-gray-400 mb-3" data-translate="github_api_desc">Configure GitHub API to upload images for Knowledge bubbles.</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block" data-translate="github_token">GitHub Personal Access Token</label>
+                            <input type="password" id="github-api-key" class="w-full bg-black text-white text-sm rounded-xl p-2 border border-white/10 focus:border-bn-orange focus:outline-none" placeholder="ghp_xxxxxxxxxxxx">
+                            <p class="text-xs text-gray-500 mt-1" data-translate="github_token_desc">Create a token with <code class="text-bn-orange">repo</code> permission at <a href="https://github.com/settings/tokens" target="_blank" class="text-bn-orange hover:underline">github.com/settings/tokens</a></p>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block" data-translate="github_repo">Repository Name</label>
+                            <input type="text" id="github-repo-name" class="w-full bg-black text-white text-sm rounded-xl p-2 border border-white/10 focus:border-bn-orange focus:outline-none" placeholder="username/repo-name">
+                            <p class="text-xs text-gray-500 mt-1" data-translate="github_repo_desc">Format: <code class="text-bn-orange">username/repository-name</code></p>
+                        </div>
+                        <button id="save-github-settings-btn" class="w-full bg-bn-orange hover:bg-bn-orange-hover text-white font-medium py-2 px-4 rounded-xl transition-all duration-150 text-xs">
+                            <i class="fas fa-save mr-1"></i> <span data-translate="save_github_settings">Save GitHub Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden textarea for copy-pasting -->
+    <textarea id="copy-helper" style="position: absolute; left: -9999px; opacity: 0;"></textarea>
+
+    <!-- Copied Notification -->
+    <div id="copied-notification">Copied!</div>
+    
+    <!-- 5. Load Libraries (Local files) -->
+    <script src="jquery.min.js"></script>
+    <script src="lodash.min.js"></script>
+    
+    <!-- 6. Load Your Popup Logic -->
+    <script src="popup.js"></script>
+</body>
+</html>

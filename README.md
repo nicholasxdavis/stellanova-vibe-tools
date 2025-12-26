@@ -17,27 +17,6 @@ With Stellanova, you can:
 
 All from a single, clean dashboard.
 
-## Installation
-
-### Manual Installation
-
-Since this is a custom developer tool, you'll install it locally.
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/nicholasxdavis/stellanova-vibe-tools.git
-cd stellanova-vibe-tools
-```
-
-2. Open Chrome or Edge and navigate to `chrome://extensions/` (or `edge://extensions/`).
-
-3. Enable **Developer mode** (toggle in the top-right corner).
-
-4. Click **Load unpacked** and select the folder where you saved the files.
-
-5. Pin the extension to your toolbar for easy access.
-
 ## Usage
 
 ### The Tools
@@ -97,38 +76,6 @@ git clone https://github.com/nicholasxdavis/stellanova-vibe-tools.git
 3. Make your changes to `popup.html`, `popup.js`, or the content scripts.
 
 4. Click the refresh icon on the extension card in `chrome://extensions/` to see your changes.
-
-### Creating a Distribution Package
-
-To share with your team:
-
-1. Zip the entire directory (excluding `.git`).
-
-2. Share the `.zip` file. They can install it by dragging it into their extensions page (if developer mode is on).
-
-## Development
-
-### Code Structure
-
-**The Dashboard** (`popup.html` / `popup.js`)
-
-The main interface. It handles the UI logic, the tab switching, and the storage management for your saved colors, fonts, and prompts. It uses jQuery and Lodash for smooth DOM manipulation.
-
-**The Workers** (`background.js`)
-
-Handles the heavy lifting like MHTML page capturing and communicating with the browser's storage API.
-
-**Content Scripts**
-
-Scripts like `analyzer_content.js`, `whatfont_content.js`, and `scraper_content.js` are injected into the page when you trigger a tool. They read the DOM and send data back to the popup.
-
-### GitHub Integration
-
-The settings tab allows you to input a Personal Access Token. The extension uses this to upload assets to your repo via the GitHub API, making it easy to host images for your Knowledge Bubbles.
-
-## Support
-
-<a href="https://buymeacoffee.com/galore"> <img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="galore" /></a>
 
 <br><br>
 
